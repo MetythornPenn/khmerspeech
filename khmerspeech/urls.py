@@ -1,5 +1,6 @@
 import regex as re
 from urlextract import URLExtract
+from urllib.parse import urlsplit
 
 domain_lookup = {
   "kh": "K▁H",
@@ -20,6 +21,15 @@ url_extractor = URLExtract(extract_email=True, extract_localhost=True)
 
 def url_verbalize(url: str) -> str:
   url = re.sub(r"https?:\/\/", "", url, re.IGNORECASE)
+  localhost_match = re.match(r"^(localhost)(?::(\d+))?$", url, re.IGNORECASE)
+  
+  # Handle localhost with port
+  if localhost_match:
+    host, port = localhost_match.groups()
+    if port:
+      return f"host.lower() port {port}"
+  
+  # Handle domain name
   paths = url.split(".")
   return " dot ".join(
     map(
@@ -27,6 +37,8 @@ def url_verbalize(url: str) -> str:
       paths,
     )
   )
+  
+  
 
 
 def email_verbalize(email: str) -> str:
@@ -36,9 +48,11 @@ def email_verbalize(email: str) -> str:
 
 def processor(text: str) -> str:
   if url_extractor.has_urls(text):
+    print('has url')
     for url in url_extractor.gen_urls(text):
       if "@" in url:
         text = text.replace(url, email_verbalize(url))
         continue
       text = text.replace(url, url_verbalize(url))
+  print('no url')
   return text

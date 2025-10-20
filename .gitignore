@@ -2,6 +2,8 @@
 .DS_Store
 .AppleDouble
 .LSOverride
+.egg-info
+.venv
 
 # Icon must end with two \r
 Icon
