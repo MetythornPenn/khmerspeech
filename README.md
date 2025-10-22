@@ -1,4 +1,4 @@
-# khmerspeech
+# khmerspeech 
 
 KhmerSpeech is a text-normalization toolkit tailored for Khmer speech applications. It provides a set of focused processors that clean raw text and verbalize numbers, currencies, dates, URLs, and other tokens that regularly appear in transcripts.
 
@@ -11,7 +11,7 @@ This project is heavily inspired by, and builds on, the open-source [tha](https:
 
 ## Installation
 
-### PyPI (planned)
+### PyPI
 
 The project will soon be published to PyPI. When it becomes available you will be able to install it with:
 
