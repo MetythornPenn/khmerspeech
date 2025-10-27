@@ -1,69 +1,68 @@
 import regex as re
-from khmerspeech.strings import overwrite_spans
-from khmerspeech.cardinals import cardinal_processor, processor as cardi_processor
-from khmerspeech.decimals import processor as decimals_processor
-from khmerspeech.verbatim import verbatim_dict
 
-verbtim_translator = str.maketrans(verbatim_dict)
+from ._numbers import currency_fraction_words, integer_words, split_numeric_token
+from .string_utils import overwrite_spans
 
-RE_NUM_CURRENCY = re.compile(
-  r"([\$€£៛₫₽¥₩฿₭])\s?([\d\u17e0-\u17e9]+\.?[\d\u17e0-\u17e9]*)|([\d\u17e0-\u17e9]+\.?[\d\u17e0-\u17e9]*)\s?([\$€£៛₫₽¥₩฿₭])"
-)
+USD_SYMBOLS = {"$", "USD", "ដុល្លារ"}
+KHR_SYMBOLS = {"៛", "KHR", "រៀល"}
 
-RE_MONEY_LEADING_ZEROS = re.compile(r"^[0\u17e0]+")
-RE_MONEY_USD_DECIMAL = re.compile(
-  r"\$ ?(([\d\u17e0-\u17e9]+,)*[\d\u17e0-\u17e9]+)(\.[\d\u17e0-\u17e9]+)?|(([\d\u17e0-\u17e9]+,)*[\d\u17e0-\u17e9]+)(\.[\d\u17e0-\u17e9]+)? ?\$"
+CURRENCY_PATTERN = re.compile(
+  r"(?P<prefix>\$|USD|ដុល្លារ|៛|KHR|រៀល)\s?(?P<amount_prefix>[\d\u17e0-\u17e9][\d\u17e0-\u17e9,\.]*)"
+  r"|(?P<amount_suffix>[\d\u17e0-\u17e9][\d\u17e0-\u17e9,\.]*)\s?(?P<suffix>\$|USD|ដុល្លារ|៛|KHR|រៀល)"
 )
 
 
-def reoder(text: str) -> str:
-  def replacer(m):
-    n = m[2]
-    s = m[1]
-    if m[3] and m[4]:
-      n = m[3]
-      s = m[4]
-    return f"{n}▁{s}".translate(verbtim_translator)
-  return RE_NUM_CURRENCY.sub(replacer, text)
+def _verbalize_usd(amount: str) -> str:
+  sign, integer_part, fractional_part, _ = split_numeric_token(amount)
+  integer_text = integer_words(integer_part, sep="▁")
+  cents = currency_fraction_words(fractional_part, sep="▁", precision=2)
 
-def currency_usd(
-  text: str, currency_text="ដុល្លារ", cent_text="សេន", separator="▁"
-) -> str:
+  if cents:
+    segments = [f"{integer_text}ដុល្លារ", f"{cents}សេន"]
+  else:
+    segments = [f"{integer_text}▁ដុល្លារ"]
+
+  spoken = "▁".join(segments)
+  if sign == "-":
+    spoken = f"ដក▁{spoken}"
+  return spoken
+
+
+def _verbalize_khr(amount: str, separator: str) -> str:
+  sign, integer_part, fractional_part, sep_hint = split_numeric_token(amount)
+  integer_text = integer_words(integer_part, sep="▁")
+
+  if fractional_part:
+    delimiter = "ចុច" if (sep_hint or separator) != "," else "ក្បៀស"
+    fraction_text = currency_fraction_words(fractional_part, sep="▁")
+    number_text = f"{integer_text}{delimiter}{fraction_text}"
+  else:
+    number_text = integer_text
+
+  spoken = f"{number_text}▁រៀល"
+  if sign == "-":
+    spoken = f"ដក▁{spoken}"
+  return spoken
+
+
+def _verbalize_currency(amount: str, symbol: str) -> str | None:
+  if symbol in USD_SYMBOLS:
+    return _verbalize_usd(amount)
+  if symbol in KHR_SYMBOLS:
+    return _verbalize_khr(amount, separator=symbol)
+  return None
+
+
+def processor(text: str) -> str:
+  """Verbalize Cambodian currency amounts (USD and riel)."""
   replacements = []
-  max_precision = 2
-  for m in RE_MONEY_USD_DECIMAL.finditer(text):
-    cadinal = m[4] or m[1]
-    floating_point = m[6] or m[3]
-    if floating_point is None or len(floating_point) > max_precision + 1:
-      continue
-
-    cadinal = cadinal.replace(",", "")
-    cadinal = RE_MONEY_LEADING_ZEROS.sub("", cadinal)
-    floating_point = floating_point[1:]
-
-    if len(floating_point) == 1:
-      floating_point += "0" * (max_precision - len(floating_point))  # pad zeros
-
-    floating_point = RE_MONEY_LEADING_ZEROS.sub("", floating_point)
-    text_segments = []
-
-    if cadinal:
-      text_segments.append(cardinal_processor(int(cadinal)) + currency_text)
-
-    if floating_point:
-      text_segments.append(cardinal_processor(int(floating_point)) + cent_text)
-
-    # zero
-    if not floating_point and not cadinal:
-      text_segments.append(cardinal_processor(int(0)) + currency_text)
-
-    replacements.append((m.start(), m.end(), separator.join(text_segments)))
+  for match in CURRENCY_PATTERN.finditer(text):
+    symbol = match.group("prefix") or match.group("suffix")
+    amount = match.group("amount_prefix") or match.group("amount_suffix")
+    spoken = _verbalize_currency(amount, symbol)
+    if spoken:
+      replacements.append((match.start(), match.end(), spoken))
   return overwrite_spans(text, replacements)
 
 
-def processor(text: str):
-  text = currency_usd(text)
-  text = reoder(text)
-  text = decimals_processor(text)
-  text = cardi_processor(text)
-  return text
+__all__ = ["processor"]

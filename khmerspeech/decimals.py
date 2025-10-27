@@ -1,23 +1,33 @@
 import regex as re
-from khmerspeech.cardinals import processor as cardinals_processor
 
-RE_DECIMALS = re.compile(r"([\-]?[\u17e0-\u17e90-9]+)([\.\,])([\u17e0-\u17e90-9]+)")
-RE_NUM_LEADING_ZEROS = re.compile(
-  r"([\-]?[\u17e0-\u17e90-9]+)([\.\,])([\u17e00]+)([\d\u17e0-\u17e9]+)"
+from ._numbers import (
+  decimal_fraction_words,
+  integer_words,
+  split_numeric_token,
 )
 
-def processor(text: str, comma_word="ក្បៀស", point_word="ចុច") -> str:
-  translation = str.maketrans({".": f"▁{point_word}▁", ",": f"▁{comma_word}▁"})
+RE_DECIMAL = re.compile(r"[-]?[\d\u17e0-\u17e9]+[.,][\d\u17e0-\u17e9]+")
 
-  def leading_zeros_replacer(m):
-    return f"{m[1]}{m[2]}{'▁'.join(m[3])}▁{m[4]}".translate(translation)
+DELIMITER_WORD = {".": "ចុច", ",": "ក្បៀស"}
 
-  def decimals_replacer(m):
-    sep = m[2].translate(translation)
-    return f"{m[1]}{sep}{m[3]}"
 
-  text = RE_NUM_LEADING_ZEROS.sub(leading_zeros_replacer, text)
-  text = RE_DECIMALS.sub(decimals_replacer, text)
-  text = cardinals_processor(text)
+def _verbalize(token: str) -> str:
+  sign, integer_part, fractional_part, separator = split_numeric_token(token)
+  if not fractional_part:
+    return token
 
-  return text
+  delimiter = DELIMITER_WORD.get(separator or ".", "ចុច")
+  integer_text = integer_words(integer_part, sep="▁")
+  fraction_text = decimal_fraction_words(fractional_part, sep="▁")
+  spoken = f"{integer_text}▁{delimiter}▁{fraction_text}"
+  if sign == "-":
+    spoken = f"ដក▁{spoken}"
+  return spoken
+
+
+def processor(text: str) -> str:
+  """Verbalize decimal numbers found inside the text."""
+  return RE_DECIMAL.sub(lambda m: _verbalize(m.group(0)), text)
+
+
+__all__ = ["processor"]

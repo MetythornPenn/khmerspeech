@@ -1,7 +1,11 @@
 import regex as re
 
-RE_SYMBOLS = re.compile(r"[ ]*[៖«»“”\"`\u2018\u2019]+[ ]*")
+RE_QUOTES = re.compile(r'[\"“”«»„‟”]+')
 
 
 def processor(text: str) -> str:
-  return RE_SYMBOLS.sub(" ", text)
+  """Strip enclosing quotation marks while keeping the content."""
+  return RE_QUOTES.sub("", text)
+
+
+__all__ = ["processor"]

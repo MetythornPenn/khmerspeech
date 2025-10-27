@@ -1,56 +1,58 @@
-# -*- coding: utf-8 -*-
 import regex as re
-from khmerspeech.strings import overwrite_spans
 
+from ._numbers import normalize_digits
 
-"""
-  Matches times like 12:30, 7:05pm, ០៨:៥៩ AM.
-  Hours = 1–2 digits; minutes = exactly 2 digits.
-  Digits can be Arabic 0-9 or Khmer \u17e0–\u17e9.
-  Optional am|pm|AM|PM (with an optional space before it).
-"""
-RE_ONLY_TIME = re.compile(
-  r"([0-9\u17e0-\u17e9]{1,2}):([0-9\u17e0-\u17e9]{2})\s?(am|pm|AM|PM)?"
+RE_YEAR_FIRST = re.compile(
+  r"(?P<year>[\d\u17e0-\u17e9]{4})(?P<sep>[/-])(?P<month>[\d\u17e0-\u17e9]{2})\2(?P<day>[\d\u17e0-\u17e9]{2})"
 )
 
-"""
-Matches YYYY-MM-DD or YYYY/MM/DD, with Arabic or Khmer digits.
-Uses a backreference \2 so the same separator (- or /) must be used between year–month and month–day.
-Examples: 2025-10-20, ២០២៥/១០/២០.
-"""
-RE_DATE_YEAR_FIRST = re.compile(
-  r"([\u17e0-\u17e9\d]{4})([/-])([\u17e0-\u17e9\d]{2})\2([\u17e0-\u17e9\d]{2})"
+RE_DAY_FIRST = re.compile(
+  r"(?P<day>[\d\u17e0-\u17e9]{2})(?P<sep>[/-])(?P<month>[\d\u17e0-\u17e9]{2})\2(?P<year>[\d\u17e0-\u17e9]{4})"
+)
+
+RE_TIME = re.compile(
+  r"(?P<hour>[\d\u17e0-\u17e9]{1,2}):(?P<minute>[\d\u17e0-\u17e9]{2})\s*(?P<suffix>[AaPp][Mm])?"
 )
 
 
-"""
-Matches DD-MM-YYYY or DD/MM/YYYY, again with Arabic or Khmer digits and consistent separator.
-Examples: 20/10/2025, ២០-១០-២០២៥.
-"""
-RE_DATE_DAY_FIRST = re.compile(
-  r"([\u17e0-\u17e9\d]{2})([/-])([\u17e0-\u17e9\d]{2})\2([\u17e0-\u17e9\d]{4})"
-)
+def _format_date(match) -> str:
+  groups = match.groupdict()
+  year = normalize_digits(groups["year"])
+  month = normalize_digits(groups["month"])
+  day = normalize_digits(groups["day"])
+  return f"{year} {month} {day}"
+
+
+def _format_day_first(match) -> str:
+  groups = match.groupdict()
+  day = normalize_digits(groups["day"])
+  month = normalize_digits(groups["month"])
+  year = normalize_digits(groups["year"])
+  return f"{day} {month} {year}"
+
+
+def _format_time(match) -> str:
+  groups = match.groupdict()
+  hour = normalize_digits(groups["hour"])
+  minute = normalize_digits(groups["minute"])
+  suffix = groups.get("suffix") or ""
+  suffix = suffix.upper()
+  suffix_text = ""
+  if suffix:
+    suffix_text = "▁" + "▁".join(list(suffix))
+  return f"{hour} {minute}{suffix_text}"
 
 
 def date_processor(text: str) -> str:
-  replacements = []
-
-  for m in RE_DATE_YEAR_FIRST.finditer(text):
-    replacement = f"{m[1]} {m[3]} {m[4]}"
-    replacements.append((m.start(), m.end(), replacement))
-
-  for m in RE_DATE_DAY_FIRST.finditer(text):
-    replacement = f"{m[1]} {m[3]} {m[4]}"
-    replacements.append((m.start(), m.end(), replacement))
-
-  return overwrite_spans(text, replacements)
+  """Normalize numeric dates into space-separated tokens."""
+  text = RE_YEAR_FIRST.sub(_format_date, text)
+  text = RE_DAY_FIRST.sub(_format_day_first, text)
+  return text
 
 
 def time_processor(text: str) -> str:
-  replacements = []
-  for m in RE_ONLY_TIME.finditer(text):
-    replacement = f"{m[1]} {m[2]}"
-    if m[3] is not None:
-      replacement += "▁" + "▁".join(m[3])
-    replacements.append((m.start(), m.end(), replacement))
-  return overwrite_spans(text, replacements)
+  """Normalize clock times and verbalize AM/PM markers."""
+  return RE_TIME.sub(_format_time, text)
+
+
+__all__ = ["date_processor", "time_processor"]

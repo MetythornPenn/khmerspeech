@@ -1,7 +1,11 @@
 import regex as re
 
-RE_HASH_TAGS = re.compile(r"\#[A-Za-z0-9\u1780-\u17ff_]+")
+RE_HASHTAG = re.compile(r"\B#[\p{L}\p{M}\p{N}_]+", re.UNICODE)
 
 
-def processor(text: str, repl="") -> str:
-  return RE_HASH_TAGS.sub(repl, text)
+def processor(text: str) -> str:
+  """Remove hashtags without touching surrounding whitespace."""
+  return RE_HASHTAG.sub("", text)
+
+
+__all__ = ["processor"]

@@ -1,10 +1,19 @@
 import regex as re
-from khmerspeech.cardinals import processor as cardinals_processor
 
-RE_ORDINALS = re.compile(r"([0-9]+)(st|nd|rd|th)")
+from ._numbers import integer_words, normalize_digits
+
+RE_ORDINAL = re.compile(r"(?<![\w-])([\d\u17e0-\u17e9]+)(st|nd|rd|th)\b", re.IGNORECASE)
 
 
-def processor(text: str, **kwargs) -> str:
-  if not RE_ORDINALS.search(text):
-    return text
-  return cardinals_processor(RE_ORDINALS.sub(r"ទី▁\1", text), **kwargs)
+def _verbalize(match) -> str:
+  number = normalize_digits(match.group(1))
+  word = integer_words(number, sep="▁")
+  return f"ទី▁{word}"
+
+
+def processor(text: str) -> str:
+  """Convert English ordinals (1st, 2nd, …) into Khmer ordinals."""
+  return RE_ORDINAL.sub(_verbalize, text)
+
+
+__all__ = ["processor"]
