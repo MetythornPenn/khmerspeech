@@ -24,7 +24,7 @@ abbr_dict = file_dict(
 )
 
 RE_COMMON_UNITS = re.compile(
-  f"([\d\u17e0-\u17e9]([\d\u17e0-\u17e9,\.]+)?[ ]*)({'|'.join(abbr_dict.keys())})([ ]|$)"
+  rf"([\d\u17e0-\u17e9]([\d\u17e0-\u17e9,\.]+)?[ ]*)({'|'.join(abbr_dict.keys())})([ ]|$)"
 )
 
 
