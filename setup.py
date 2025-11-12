@@ -19,7 +19,7 @@ setuptools.setup(
     "Intended Audience :: Developers",
     "Natural Language :: English",
   ],
-  python_requires=">=3.8",
+  python_requires=">3.8",
   packages=setuptools.find_packages(),
   package_dir={"khmerspeech": "khmerspeech"},
   include_package_data=True,
