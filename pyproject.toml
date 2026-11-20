@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "khmerspeech"
+version = "0.3.0"
+description = "Khmer text normalization and inverse text normalization for ASR/TTS."
+readme = "README.md"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Metythorn Penn", email = "metythorn@gmail.com" }]
+requires-python = ">=3.10"
+dependencies = [
+  "regex",
+  "phonenumbers",
+  "urlextract",
+  "ftfy",
+]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
+  "Intended Audience :: Developers",
+  "Natural Language :: Khmer",
+  "Topic :: Text Processing :: Linguistic",
+]
+
+[project.urls]
+Homepage = "https://github.com/MetythornPenn/khmerspeech"
+
+[project.optional-dependencies]
+dev = ["pytest", "build", "twine"]
+
+[tool.setuptools.packages.find]
+include = ["khmerspeech*"]
+
+[tool.setuptools.package-data]
+khmerspeech = ["text_normalization/dict/*.tsv"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
